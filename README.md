@@ -12,6 +12,8 @@ Secure, mobile-first encryption vault based on the **ALG01 Protocol**.
 ### 🧩 Philosophy
 ORcry.pt provides zero-knowledge local encryption. No backdoors, no servers, no recovery. If the parameters are lost, the data is mathematically void.
 
+<img src="https://imgpx.com/en/oqiJ4kCVOgkX.jpg">
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 cannotbeusedforevilorimbecility[!/¡]
 
