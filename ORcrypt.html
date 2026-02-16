@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORcry.pt | ALG01 Protocol</title>
+    <style>
+        :root {
+            --blue-power: #00d9ff;
+            --blue-glow: rgba(0, 217, 255, 0.4);
+            --bg-dark: #000000;
+        }
+
+        body { 
+            background-color: var(--bg-dark); 
+            color: var(--blue-power); 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex; justify-content: center; align-items: center; 
+            min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box;
+        }
+
+        .container { 
+            position: relative; width: 100%; max-width: 420px; padding: 30px; 
+            border: 2px solid var(--blue-power); background: #050505; 
+            box-shadow: 0 0 20px var(--blue-glow); border-radius: 15px;
+        }
+        
+        .rune { 
+            position: absolute; width: 35px; height: 35px; stroke: var(--blue-power); 
+            fill: none; stroke-width: 2.5; filter: drop-shadow(0 0 5px var(--blue-power)); opacity: 0.7;
+        }
+        .top-l { top: 10px; left: 10px; } .top-r { top: 10px; right: 10px; }
+        .bot-l { bottom: 10px; left: 10px; } .bot-r { bottom: 10px; right: 10px; }
+
+        h2 { 
+            text-align: center; letter-spacing: 5px; color: var(--blue-power); 
+            margin-bottom: 5px; text-shadow: 0 0 10px var(--blue-power);
+        }
+        .tagline {
+            text-align: center; font-size: 0.6em; color: rgba(0,217,255,0.4); 
+            margin-bottom: 25px; letter-spacing: 1px;
+        }
+
+        textarea, input { 
+            width: 100%; margin-bottom: 15px; background: #0a0a0a; 
+            border: 1px solid var(--blue-power); color: #fff; padding: 14px; 
+            box-sizing: border-box; outline: none; border-radius: 8px; font-size: 16px; 
+        }
+
+        input::placeholder, textarea::placeholder { color: rgba(0, 217, 255, 0.3); }
+
+        .btn-group { display: flex; gap: 15px; margin-top: 10px; }
+
+        button { 
+            flex: 1; padding: 16px; cursor: pointer; background: transparent; 
+            color: var(--blue-power); border: 2px solid var(--blue-power); 
+            font-weight: bold; border-radius: 8px; font-size: 0.9rem;
+            transition: all 0.2s; text-transform: uppercase;
+        }
+
+        button:active { background: var(--blue-power); color: #000; box-shadow: 0 0 25px var(--blue-power); }
+        
+        #status { margin-top: 25px; font-size: 0.75em; text-align: center; letter-spacing: 2px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <svg class="rune top-l" viewBox="0 0 100 100"><path d="M50 10 L90 90 L10 90 Z M50 30 L30 80 L70 80 Z"/></svg>
+    <svg class="rune top-r" viewBox="0 0 100 100"><path d="M10 10 L90 10 L50 90 Z"/></svg>
+    <svg class="rune bot-l" viewBox="0 0 100 100"><path d="M20 20 L80 80 M80 20 L20 80"/></svg>
+    <svg class="rune bot-r" viewBox="0 0 100 100"><circle cx="50" cy="50" r="35"/></svg>
+
+    <h2>ORCRY.PT</h2>
+    <div class="tagline">OR CRY FOR YOUR PLAIN TEXT</div>
+
+    <textarea id="mainInput" rows="3" placeholder="Input Text..."></textarea>
+    <input type="text" id="ivInput" placeholder="IV (Min 12 chars)">
+    <input type="password" id="seedInput" placeholder="Secret Seed">
+    
+    <input type="file" id="fileUpload" style="font-size: 0.7em; border: 1px dashed var(--blue-power);">
+
+    <div class="btn-group">
+        <button onclick="handleAction('encrypt')">Crypt</button>
+        <button onclick="handleAction('decrypt')">Uncrypt</button>
+    </div>
+
+    <div id="status">ALG01_STANDBY</div>
+</div>
+
+<script>
+    function getFib(n) {
+        if (n <= 0n) return 0n;
+        let a = 0n, b = 1n;
+        for (let i = 1n; i < n; i++) { [a, b] = [b, a + b]; }
+        return b;
+    }
+
+    async function deriveKey(seed) {
+        const index = BigInt(Math.floor((seed.length / 2) * 285));
+        const fibValue = getFib(index);
+        const combinedSeed = seed + fibValue.toString();
+        const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(combinedSeed));
+        return crypto.subtle.importKey('raw', hash, 'AES-GCM', false, ['encrypt', 'decrypt']);
+    }
+
+    async function handleAction(mode) {
+        const status = document.getElementById('status');
+        const text = document.getElementById('mainInput').value;
+        const ivText = document.getElementById('ivInput').value;
+        const seed = document.getElementById('seedInput').value;
+        const file = document.getElementById('fileUpload').files[0];
+
+        if (!seed || ivText.length < 12) { status.innerText = "ERROR: INVALID PARAMS"; return; }
+        status.innerText = "PROCESSING...";
+
+        try {
+            const key = await deriveKey(seed);
+            const iv = new TextEncoder().encode(ivText).slice(0, 12);
+
+            if (file) {
+                const data = await file.arrayBuffer();
+                if (mode === 'encrypt') {
+                    const enc = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+                    download(enc, file.name + ".rok");
+                } else {
+                    const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+                    download(dec, file.name.replace(".rok", ""));
+                }
+            } else {
+                if (mode === 'encrypt') {
+                    const enc = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(text));
+                    document.getElementById('mainInput').value = btoa(String.fromCharCode(...new Uint8Array(enc)));
+                } else {
+                    const bytes = Uint8Array.from(atob(text), c => c.charCodeAt(0));
+                    const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, bytes);
+                    document.getElementById('mainInput').value = new TextDecoder().decode(dec);
+                }
+            }
+            status.innerText = "SUCCESS_OK";
+        } catch (e) { status.innerText = "AUTH_FAILED"; }
+    }
+
+    function download(data, name) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([data]));
+        a.download = name; a.click();
+    }
+</script>
+</body>
+</html>
